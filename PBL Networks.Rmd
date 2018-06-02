@@ -1,0 +1,273 @@
+---
+title: "PBLs and Sunshine"
+author: "Sean Connelly"
+date: "`r format(Sys.Date(),'%B %d, %Y')`"
+draft: false
+slug: pbl-networks-rmd
+categories: ["R"]
+tags: ["Bike","SF","Animation","GIF"]
+autoThumbnailImage: false
+thumbnailImagePosition: "top"
+thumbnailImage: http://res.cloudinary.com/dfngkha36/image/upload/c_scale,w_750/v1527957250/StockSnap_PBLSunshine.jpg
+coverImage: http://res.cloudinary.com/dfngkha36/image/upload/c_scale,w_1920/v1527957250/StockSnap_PBLSunshine.jpg
+output:
+  html_document: default
+editor_options:
+  chunk_output_type: console
+always_allow_html: yes
+---
+
+```{r setup,include=F,echo=F}
+
+knitr::opts_chunk$set(message = F,warning = F,fig.width = 10,fig.align = "center")
+tmap::tmap_options(tmap.limits = c(facets.plot = 64,facets.view = 10))
+
+library(hrbrthemes);library(tidyverse) #devtools::install_github("hadley/ggplot2")
+library(stringr);library(lubridate)
+library(zoo);library(scales)
+library(sf);library(janitor);library(tmap) 
+library(ggmap);library(viridis);library(leaflet)
+library(animation);library(gganimate)  #devtools::install_github("yihui/animation"),     
+                                       #devtools::install_github("dgrtwo/gganimate")
+
+options(scipen = 1000,stringsAsFactors = F)
+
+setwd("E:/Data/PBL-Networks")
+
+```
+<p>
+It's finally summertime here in New York, which means bike season is upon us. Since the turn of the millennium, cycling as a mode of transportation has exploded in the US; the [Census Bureau](https://www.census.gov/newsroom/press-releases/2014/cb14-86.html) recorded a 60 percent increase in bike commuting between 2000 and 2012. This increase in participation has gone hand in hand with the expansion of biking facilities and infrastructure. According to the ever reliable [Thrillist](https://www.thrillist.com/travel/nation/most-bike-friendly-cities-in-the-us), here are "The Best Cities in America for Cyclists", in no particular order:
+
+*  Chicago, IL
+*  Boulder, CO
+*  Minneapolis-Saint Paul, MN
+*  Washington, DC
+*  Seattle, WA
+*  New York City, NY
+*  Madison, WI
+*  Boise, ID
+*  San Francisco, CA
+*  Portland, OR
+
+I want to visualize the existing bike network for each city and chart its growth over time. By "bike network", I mean Class I and Class II infrastructure, which refer to fully separated cycle tracks (e.g. Hudson Greenway) and striped bike lanes (protected or not). Bike-friendly municipalities should have a "low-stress" web of streets that cyclists feel comfortable traveling on, and Class III facilities like sharrows (e.g. painted chevron, stick figure on a bike) shouldn't count - they strike me as totally [ineffective](https://usa.streetsblog.org/2016/01/14/study-sharrows-dont-make-streets-safer-for-cycling/).
+
+To accomplish the above, we need data on the facility type, length, installation year, and spatial geometry of each lane. After perusing the open data portals for each municipality, only [Washington DC](http://opendata.dc.gov/datasets/bicycle-lanes?geometry=-77.265%2C38.852%2C-76.743%2C38.945), [Seattle](https://data-seattlecitygis.opendata.arcgis.com/datasets/existing-bike-facilities), [New York City](https://data.cityofnewyork.us/Transportation/Bike-Routes/7vsa-caz7), [Madison](https://data-cityofmadison.opendata.arcgis.com/datasets/bike-paths), [San Francisco](https://data.sfgov.org/Transportation/SFMTA-Bikeway-Network/aupf-nbjc), and [Portland](https://gis-pdx.opendata.arcgis.com/datasets/bicycle-network) fit the bill. The GitHub repo has a [script](https://github.com/sean-connelly/PBL-Networks) with the dirty work of making sure fields and projection systems play nicely with one another, but for now let's load the clean data like so:
+
+```{r import,echo=T}
+
+#=============
+#Import bike data
+#=============
+
+#Bike networks
+dc <- st_read("Shapefiles/Washington.shp",quiet = T)
+seattle <- st_read("Shapefiles/Seattle.shp",quiet = T)
+nyc <- st_read("Shapefiles/New_York_City.shp",quiet = T)
+madison <- st_read("Shapefiles/Madison.shp",quiet = T)
+sfca <- st_read("Shapefiles/San_Francisco.shp",quiet = T)
+pdx <- st_read("Shapefiles/Portland.shp",quiet = T)
+
+#Combine into one frame
+bike_net <- rbind(dc,seattle,nyc,madison,sfca,pdx) %>% 
+  rename("Facility_Type" = Fclty_T,
+         "Facility_Class" = Fclty_C,
+         "Install_Year" = Instl_Y)
+
+```
+<p>
+Now that we've got everything in a Simple Features-friendly data frame - where geographic data is stored in a list-column - it is incredibly easy to make an interactive plot for each city with a few lines of code using the tmap package.
+
+```{r interactive,echo=T,fig.height=20,fig.width=12}
+
+#=============
+#Interactive map
+#=============
+
+#Basemap
+basemap = leaflet::providers$CartoDB.Positron
+
+#Facet for each city
+plot_facet <- tm_shape(bike_net) + 
+  tm_lines(id = "pbl",col = "green",lwd = 2,legend.lwd.show = F,
+           popup.vars = c("Facility" = "Facility_Type",
+                          "Miles" = "Miles",
+                          "Install Year" = "Install_Year"),
+           popup.format = list(Miles = list(digits = 4),
+                               Install_Year = list(big.mark = ""))) + 
+  tm_facets(by = "City",nrow = 3,free.coords = T) +
+  tmap_mode("view") +
+  tm_view(basemaps = basemap) +
+  tm_layout(main.title = "Bike Lane Networks in Select US Cities",
+            between.margin = 1)
+
+#Plot
+plot_facet
+
+```
+<!--The text below wrapped around the tmap no matter what HTML I used, except for this manual hack to force output on to a new line--> 
+<font color="white">.<p>.<p>.<p>.<p>.<p>.<p>.<p>.<p>.<p>.<p>.<p>.<p>.<p>..<p>.<p>.<p>.<p>.
+<p>.<p>.<p>.<p>.<p>.<p>.<p>.<p>.<p>..<p>.<p>.<p>.<p>.<p>.<p>.<p>.<p>.<p>.<p>.<p>.<p>.<p>.
+<p>.</font>
+
+A couple of initial observations: 1) I'm surprised that NYC's infrastructure is so sparse and 2) given the Bay Area's reputation I would have thought bike lanes were all over the place, though maybe this is due to topography more than anything else. These maps display the current cycling network; how has it evolved over time? One way to answer this question is by plotting cumulative mileage by installation year. Unfortunately, New York and Madison do not track miles added, so they are excluded from here on out. We can plot network miles using the code chunk below: 
+
+```{r mileage,echo=T}
+
+#=============
+#Mileage over time
+#=============
+
+#Collapse years to the 21st century, remove NAs
+bike_years <- bike_net %>%
+  mutate(Install_Year = case_when(Install_Year %in% c(0,1776,1900) ~ NA_real_,
+                                  Install_Year>1900 & Install_Year<=1999 ~ 1999,
+                                  TRUE ~ Install_Year)) %>%
+  filter(!is.na(Install_Year),!City %in% c("New York City","Madison"))
+
+#Get mileage by city
+bike_cum <- bike_years %>% 
+  as_tibble() %>% 
+  select(City,Install_Year,Miles) %>% 
+  group_by(City,Install_Year) %>% 
+  summarize(Miles = sum(Miles,na.rm = T)) %>% 
+  ungroup() %>% 
+  group_by(City) %>% 
+  arrange(Install_Year) %>% 
+  mutate(Total_Miles = cumsum(Miles))
+
+#Plot
+plot_miles <- ggplot(bike_cum,aes(Install_Year,Total_Miles,
+                                  color = fct_reorder2(City,Install_Year,Total_Miles))) +
+  geom_line(size = 1.5) +
+  scale_y_comma(limits = c(0,300)) +
+  scale_color_ipsum() +
+  labs(title = "Bike Lane Network Miles Over Time",
+       subtitle = "Class I and Class II Facilities",
+       x = "Installation Year",y = "Total Miles",color = "City",
+       caption = "Data: City Open Data Portals") +
+  theme_ipsum(base_size = 12,grid = "XY") +
+  theme(legend.position = "top")
+
+#Output
+plot_miles
+
+```
+<p>
+Each city has added miles of bike lanes at a steady clip since 2000, which is very encouraging. Washington DC's progress is especially notable; they built only 3 miles of high quality bike infrastructure in the 20th century, but their network clocked in at 78 miles by the end of 2016. Portland, as expected, is simply in a different class. They had a ridiculous 175 miles already in place by 2000. As of 2016, the Portland Bureau of Transportation (PBOT) had constructed a 279 mile low-stress network, and the agency is now preparing to make protected bike lanes the [design standard](https://usa.streetsblog.org/2018/05/25/portland-plans-to-make-protected-bike-lanes-standard-street-infrastructure/).
+
+Finally, I want to create a GIF to show the geographic expansion of good bike infrastructure over time. There are tons of awesome animations for subway systems - [Chinese](https://www.huffingtonpost.com/2014/12/29/beijing-subway-expansion_n_6389002.html) investment in transit puts the US to shame - so why not try one for cycling? Now there aren't necessarily color-coded "lines" like in rail or bus rapid transit, but we can make sure that each city matches with the mileage chart like so: 
+
+```{r animated,echo=T}
+
+#=============
+#Animated ggplot maps
+#=============
+
+#Portland
+plot_pdx <- ggplot() +
+  geom_sf(data = bike_years %>% filter(City=="Portland"),
+          aes(frame = Install_Year,cumulative = T),
+          color = ipsum_pal()(4)[1],size = 1.5) +
+  coord_sf(datum = NA) +
+  labs(title = "Portland Bike Lane Network in",x = NULL,y = NULL) +
+  theme_ipsum(grid = F,base_size = 12) +
+  theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank())
+
+#San Francisco
+plot_sfca <- ggplot() +
+  geom_sf(data = bike_years %>% filter(City=="San Francisco"),
+          aes(frame = Install_Year,cumulative = T),
+          color = ipsum_pal()(4)[2],size = 1.5) +
+  coord_sf(datum = NA) +
+  labs(title = "San Francisco Bike Lane Network in",x = NULL,y = NULL) +
+  theme_ipsum(grid = F,base_size = 12) +
+  theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank())
+
+#Seattle
+plot_seattle <- ggplot() +
+  geom_sf(data = bike_years %>% filter(City=="Seattle"),
+          aes(frame = Install_Year,cumulative = T),
+          color = ipsum_pal()(4)[3],size = 1.5) +
+  coord_sf(datum = NA) +
+  labs(title = "Seattle Bike Lane Network in",x = NULL,y = NULL) +
+  theme_ipsum(grid = F,base_size = 12) +
+  theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank())
+
+#Washington DC
+plot_dc <- ggplot() +
+  geom_sf(data = bike_years %>% filter(City=="Washington DC"),
+          aes(frame = Install_Year,cumulative = T),
+          color = ipsum_pal()(4)[4],size = 1.5) +
+  coord_sf(datum = NA) +
+  labs(title = "Washington DC Bike Lane Network in",x = NULL,y = NULL) +
+  theme_ipsum(grid = F,base_size = 12) +
+  theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank())
+
+```
+
+
+
+```{r pdx gif,echo=T}
+
+#=============
+#Create gifs
+#=============
+
+#Set animation interval at 1/2 second
+animation::ani.options(interval = .5)
+
+#Portland
+gganimate(plot_pdx,ani.width =  1000,ani.height = 800,
+          "plot_pdx.gif",title_frame = T)
+
+```
+
+
+
+```{r sfca gif,echo=T}
+
+#Set animation interval at 1/2 second
+animation::ani.options(interval = .5)
+
+#San Francisco
+gganimate(plot_sfca,ani.width =  1000,ani.height = 800,
+          "plot_sfca.gif",title_frame = T)
+
+```
+
+
+
+```{r seattle gif,echo=T}
+
+#Set animation interval at 1/2 second
+animation::ani.options(interval = .5)
+
+#Seattle
+gganimate(plot_seattle,ani.width =  1000,ani.height = 800,
+          "plot_seattle.gif",title_frame = T)
+
+```
+
+
+
+```{r dc gif,echo=T}
+
+#Set animation interval at 1/2 second
+animation::ani.options(interval = .5)
+
+#Washington DC
+gganimate(plot_dc,ani.width =  1000,ani.height = 800,
+          "plot_dc.gif",title_frame = T)
+
+```
+
+![ ](plot_pdx.gif)
+![ ](plot_sfca.gif)
+![ ](plot_seattle.gif)
+![ ](plot_dc.gif)
+
+I could stare at these all day. Anyway, now we can add GIFs to our R data viz locker. Maybe we could experiment with some of the true bike capitals in Europe and South America next?
